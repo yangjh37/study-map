@@ -8,101 +8,145 @@
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans min-h-screen pb-12">
     
-    <header class="bg-white shadow-sm py-4 px-4 sticky top-0 z-10 flex items-center gap-3">
-        <a href="index.html" class="p-2 hover:bg-gray-100 rounded-full transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6 text-gray-600">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-            </svg>
-        </a>
-        <h1 id="building-title" class="text-xl font-bold text-gray-800">로딩 중...</h1>
+    <header class="bg-white shadow-sm py-4 px-4 sticky top-0 z-10 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <a href="index.html" class="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6 text-gray-600">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                </svg>
+            </a>
+            <h1 id="building-title" class="text-xl font-bold text-gray-800">로딩 중...</h1>
+        </div>
+        
+        <button id="favorite-btn" class="text-3xl text-gray-300 hover:text-yellow-400 transition-colors drop-shadow-sm pb-1">
+            ☆
+        </button>
     </header>
 
     <main class="max-w-3xl mx-auto mt-4 px-4">
         
-        <div class="flex overflow-x-auto gap-2 py-2 mb-4 scrollbar-hide">
-            <button class="shrink-0 px-4 py-2 bg-yellow-100 text-yellow-800 font-bold rounded-full border border-yellow-300 shadow-sm">1층 로비</button>
-            <button class="shrink-0 px-4 py-2 bg-white text-gray-600 font-medium rounded-full border border-gray-200 hover:bg-gray-50">3층 휴게실</button>
-            <button class="shrink-0 px-4 py-2 bg-white text-gray-600 font-medium rounded-full border border-gray-200 hover:bg-gray-50">5층 복도 끝</button>
-        </div>
+        <div id="tab-menu" class="flex overflow-x-auto gap-2 py-2 mb-4 scrollbar-hide"></div>
 
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6 flex justify-center items-center min-h-[350px]">
-            <div class="text-center text-gray-400">
-                <span class="text-4xl block mb-2">🗺️</span>
-                <p>단순화된 2D 도면 이미지가<br>들어갈 자리입니다.</p>
-            </div>
-            </div>
+        <div id="map-container" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6 flex justify-center items-center min-h-[350px]"></div>
 
-        <div class="bg-yellow-50 rounded-2xl p-6 border border-yellow-100 shadow-sm">
-            <div class="flex items-center gap-2 mb-3">
-                <span class="text-red-500 text-xl">📍</span>
-                <h2 class="text-lg font-bold text-gray-800">공간 정보</h2>
-            </div>
-            
-            <div class="space-y-3 text-sm text-gray-700">
-                <div class="flex">
-                    <span class="font-bold w-20 text-gray-600">[위치]</span>
-                    <span class="flex-1">해당 건물 1층 정문 진입 후 우측 로비</span>
-                </div>
-                <div class="flex">
-                    <span class="font-bold w-20 text-gray-600">[좌석 수]</span>
-                    <span class="flex-1">원형 테이블 4개 (약 16석)</span>
-                </div>
-                <div class="flex">
-                    <span class="font-bold w-20 text-gray-600">[콘센트]</span>
-                    <span class="flex-1 flex items-center gap-1">
-                        🔌 <span class="text-green-600 font-semibold">있음</span> (벽면 기둥 2곳)
-                    </span>
-                </div>
-                <div class="flex">
-                    <span class="font-bold w-20 text-gray-600">[특징]</span>
-                    <span class="flex-1">유동 인구가 많아 약간의 백색소음이 있음. 팀플 회의나 가벼운 작업에 적합함.</span>
-                </div>
-            </div>
-        </div>
+        <div id="info-card" class="bg-yellow-50 rounded-2xl p-6 border border-yellow-100 shadow-sm relative"></div>
 
     </main>
 
     <style>
-        .scrollbar-hide::-webkit-scrollbar {
-            display: none;
-        }
-        .scrollbar-hide {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 
+    <script src="data.js"></script>
     <script>
-        // index.html에서 사용했던 건물 데이터를 임시로 가져옵니다.
-        const buildingData = [
-            { id: "electronics", name: "전자정보대학관", icon: "💻" },
-            { id: "applied_science", name: "응용과학대학관", icon: "🔬" },
-            { id: "intl_studies", name: "국제학관", icon: "🌍" },
-            { id: "intl_business", name: "국제경영대학관", icon: "💼" },
-            { id: "life_science", name: "생명과학대학관", icon: "🌱" },
-            { id: "seonseung", name: "선승관", icon: "🥋" },
-            { id: "multimedia", name: "멀티미디어교육관", icon: "🎬" },
-            { id: "physical_edu", name: "체육대학관", icon: "⚽" },
-            { id: "engineering", name: "공과대학관", icon: "⚙️" },
-            { id: "foreign_lang", name: "외국어대학", icon: "🗣️" },
-            { id: "woojungwon", name: "우정원", icon: "🏢" }
-        ];
-
-        // 1. 주소창에서 id 값을 추출합니다. (예: index.html에서 ?id=electronics 로 넘어온 경우)
         const urlParams = new URLSearchParams(window.location.search);
         const currentId = urlParams.get('id');
+        const currentBuilding = campusData.find(b => b.id === currentId);
 
-        // 2. 해당 id와 일치하는 건물 데이터를 배열에서 찾습니다.
-        const currentBuilding = buildingData.find(b => b.id === currentId);
+        // --- 즐겨찾기 기능 구현 로직 ---
+        const favBtn = document.getElementById('favorite-btn');
+        // 브라우저 저장소(localStorage)에서 기존 즐겨찾기 목록을 불러옵니다.
+        let favorites = JSON.parse(localStorage.getItem('studyMapFavorites')) || [];
+        
+        // 현재 건물이 즐겨찾기에 있는지 확인하고 초기 별 모양을 설정합니다.
+        if (favorites.includes(currentId)) {
+            favBtn.innerText = '⭐';
+            favBtn.classList.add('text-yellow-400');
+        }
 
-        // 3. 데이터를 찾았다면, 페이지의 제목(h1)과 브라우저 탭 타이틀을 해당 건물명으로 바꿔줍니다.
+        // 별 모양 버튼을 클릭했을 때의 동작
+        favBtn.addEventListener('click', () => {
+            if (favorites.includes(currentId)) {
+                // 이미 즐겨찾기 된 경우 -> 해제
+                favorites = favorites.filter(id => id !== currentId);
+                favBtn.innerText = '☆';
+                favBtn.classList.remove('text-yellow-400');
+            } else {
+                // 즐겨찾기가 안 된 경우 -> 추가
+                favorites.push(currentId);
+                favBtn.innerText = '⭐';
+                favBtn.classList.add('text-yellow-400');
+            }
+            // 변경된 목록을 다시 저장소에 저장합니다.
+            localStorage.setItem('studyMapFavorites', JSON.stringify(favorites));
+        });
+        // -----------------------------
+
+
+        // --- 건물 정보 및 렌더링 로직 ---
         if (currentBuilding) {
             document.getElementById('building-title').innerText = `${currentBuilding.name} ${currentBuilding.icon}`;
             document.title = `${currentBuilding.name} - 스터디맵`;
+
+            if (!currentBuilding.floors || currentBuilding.floors.length === 0) {
+                document.getElementById('tab-menu').innerHTML = `<p class="text-gray-400 text-sm">아직 등록된 공간 정보가 없습니다.</p>`;
+                document.getElementById('map-container').innerHTML = `<div class="text-gray-400">🔍 데이터를 열심히 수집하고 있습니다!</div>`;
+                document.getElementById('info-card').style.display = 'none';
+            } else {
+                renderTabs(currentBuilding.floors, 0);
+                renderDetails(currentBuilding.floors[0]);
+            }
         } else {
-            // id가 없거나 잘못된 주소로 들어온 경우의 예외 처리
             document.getElementById('building-title').innerText = "건물을 찾을 수 없습니다";
-            document.title = "오류 - 스터디맵";
+            favBtn.style.display = 'none'; // 잘못된 주소일 땐 즐겨찾기 숨김
+        }
+
+        function renderTabs(floors, activeIndex) {
+            const tabMenu = document.getElementById('tab-menu');
+            tabMenu.innerHTML = floors.map((floor, idx) => {
+                const isActive = idx === activeIndex;
+                const activeClass = "bg-yellow-100 text-yellow-800 font-bold border-yellow-300 shadow-sm";
+                const inactiveClass = "bg-white text-gray-600 font-medium border-gray-200 hover:bg-gray-50";
+                
+                return `
+                    <button onclick="changeFloor(${idx})" class="shrink-0 px-4 py-2 rounded-full border transition-all ${isActive ? activeClass : inactiveClass}">
+                        ${floor.floorName}
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function renderDetails(floorData) {
+            const mapContainer = document.getElementById('map-container');
+            const infoCard = document.getElementById('info-card');
+
+            mapContainer.innerHTML = `
+                <img src="${floorData.image}" alt="${floorData.floorName}" class="max-w-full h-auto rounded-lg" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                <div class="text-center text-gray-400 hidden">
+                    <span class="text-4xl block mb-2">🗺️</span>
+                    <p>${floorData.floorName} 도면 파일(<span class="text-xs font-mono">${floorData.image}</span>)을<br>폴더에 추가해주세요.</p>
+                </div>
+            `;
+
+            // 데이터가 없을 경우 '정보 없음'으로 처리
+            const congestionText = floorData.congestion || '정보 없음';
+
+            infoCard.style.display = 'block';
+            infoCard.innerHTML = `
+                <div class="flex items-center justify-between mb-4 border-b border-yellow-200 pb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="text-red-500 text-xl">📍</span>
+                        <h2 class="text-lg font-bold text-gray-800">${floorData.floorName} 정보</h2>
+                    </div>
+                    <a href="http://news.khu.ac.kr/kor/user/contents/view.do?menuNo=200086" target="_blank" rel="noopener noreferrer" class="bg-blue-600 text-white text-xs font-bold px-3 py-2 rounded-full hover:bg-blue-700 shadow-sm transition-colors flex items-center gap-1">
+                        🗺️ 경로 찾기
+                    </a>
+                </div>
+                
+                <div class="space-y-3 text-sm text-gray-700">
+                    <div class="flex"><span class="font-bold w-20 text-gray-600">[위치]</span><span class="flex-1">${floorData.location}</span></div>
+                    <div class="flex"><span class="font-bold w-20 text-gray-600">[좌석 수]</span><span class="flex-1">${floorData.seats}</span></div>
+                    <div class="flex items-center"><span class="font-bold w-20 text-gray-600">[사용자수]</span><span class="flex-1 text-blue-600 font-semibold bg-white px-2 py-1 rounded shadow-sm border border-gray-100">${congestionText}</span></div>
+                    <div class="flex"><span class="font-bold w-20 text-gray-600">[콘센트]</span><span class="flex-1">${floorData.plug}</span></div>
+                    <div class="flex"><span class="font-bold w-20 text-gray-600">[특징]</span><span class="flex-1">${floorData.features}</span></div>
+                </div>
+            `;
+        }
+
+        function changeFloor(index) {
+            renderTabs(currentBuilding.floors, index);
+            renderDetails(currentBuilding.floors[index]);
         }
     </script>
 </body>
