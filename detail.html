@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>로딩 중... - 스터디맵</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen pb-12">
+    
+    <header class="bg-white shadow-sm py-4 px-4 sticky top-0 z-10 flex items-center gap-3">
+        <a href="index.html" class="p-2 hover:bg-gray-100 rounded-full transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6 text-gray-600">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+            </svg>
+        </a>
+        <h1 id="building-title" class="text-xl font-bold text-gray-800">로딩 중...</h1>
+    </header>
+
+    <main class="max-w-3xl mx-auto mt-4 px-4">
+        
+        <div class="flex overflow-x-auto gap-2 py-2 mb-4 scrollbar-hide">
+            <button class="shrink-0 px-4 py-2 bg-yellow-100 text-yellow-800 font-bold rounded-full border border-yellow-300 shadow-sm">1층 로비</button>
+            <button class="shrink-0 px-4 py-2 bg-white text-gray-600 font-medium rounded-full border border-gray-200 hover:bg-gray-50">3층 휴게실</button>
+            <button class="shrink-0 px-4 py-2 bg-white text-gray-600 font-medium rounded-full border border-gray-200 hover:bg-gray-50">5층 복도 끝</button>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6 flex justify-center items-center min-h-[350px]">
+            <div class="text-center text-gray-400">
+                <span class="text-4xl block mb-2">🗺️</span>
+                <p>단순화된 2D 도면 이미지가<br>들어갈 자리입니다.</p>
+            </div>
+            </div>
+
+        <div class="bg-yellow-50 rounded-2xl p-6 border border-yellow-100 shadow-sm">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="text-red-500 text-xl">📍</span>
+                <h2 class="text-lg font-bold text-gray-800">공간 정보</h2>
+            </div>
+            
+            <div class="space-y-3 text-sm text-gray-700">
+                <div class="flex">
+                    <span class="font-bold w-20 text-gray-600">[위치]</span>
+                    <span class="flex-1">해당 건물 1층 정문 진입 후 우측 로비</span>
+                </div>
+                <div class="flex">
+                    <span class="font-bold w-20 text-gray-600">[좌석 수]</span>
+                    <span class="flex-1">원형 테이블 4개 (약 16석)</span>
+                </div>
+                <div class="flex">
+                    <span class="font-bold w-20 text-gray-600">[콘센트]</span>
+                    <span class="flex-1 flex items-center gap-1">
+                        🔌 <span class="text-green-600 font-semibold">있음</span> (벽면 기둥 2곳)
+                    </span>
+                </div>
+                <div class="flex">
+                    <span class="font-bold w-20 text-gray-600">[특징]</span>
+                    <span class="flex-1">유동 인구가 많아 약간의 백색소음이 있음. 팀플 회의나 가벼운 작업에 적합함.</span>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <style>
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+
+    <script>
+        // index.html에서 사용했던 건물 데이터를 임시로 가져옵니다.
+        const buildingData = [
+            { id: "electronics", name: "전자정보대학관", icon: "💻" },
+            { id: "applied_science", name: "응용과학대학관", icon: "🔬" },
+            { id: "intl_studies", name: "국제학관", icon: "🌍" },
+            { id: "intl_business", name: "국제경영대학관", icon: "💼" },
+            { id: "life_science", name: "생명과학대학관", icon: "🌱" },
+            { id: "seonseung", name: "선승관", icon: "🥋" },
+            { id: "multimedia", name: "멀티미디어교육관", icon: "🎬" },
+            { id: "physical_edu", name: "체육대학관", icon: "⚽" },
+            { id: "engineering", name: "공과대학관", icon: "⚙️" },
+            { id: "foreign_lang", name: "외국어대학", icon: "🗣️" },
+            { id: "woojungwon", name: "우정원", icon: "🏢" }
+        ];
+
+        // 1. 주소창에서 id 값을 추출합니다. (예: index.html에서 ?id=electronics 로 넘어온 경우)
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentId = urlParams.get('id');
+
+        // 2. 해당 id와 일치하는 건물 데이터를 배열에서 찾습니다.
+        const currentBuilding = buildingData.find(b => b.id === currentId);
+
+        // 3. 데이터를 찾았다면, 페이지의 제목(h1)과 브라우저 탭 타이틀을 해당 건물명으로 바꿔줍니다.
+        if (currentBuilding) {
+            document.getElementById('building-title').innerText = `${currentBuilding.name} ${currentBuilding.icon}`;
+            document.title = `${currentBuilding.name} - 스터디맵`;
+        } else {
+            // id가 없거나 잘못된 주소로 들어온 경우의 예외 처리
+            document.getElementById('building-title').innerText = "건물을 찾을 수 없습니다";
+            document.title = "오류 - 스터디맵";
+        }
+    </script>
+</body>
+</html>
