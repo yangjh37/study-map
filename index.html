@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>세계와 시민: 스터디맵</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans">
     
@@ -14,63 +15,66 @@
     </header>
 
     <main class="max-w-5xl mx-auto px-4 mb-12">
-        <div id="building-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            </div>
+        <div id="loading" class="text-center py-10 text-gray-500 font-bold">데이터를 불러오는 중입니다... ⏳</div>
+        <div id="building-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 hidden"></div>
     </main>
 
     <script>
-        // 1. 제공해주신 건물 리스트를 반영한 데이터 배열
-        const buildingData = [
-            { id: "electronics", name: "전자정보대학관", icon: "💻", spaceCount: 0 },
-            { id: "applied_science", name: "응용과학대학관", icon: "🔬", spaceCount: 0 },
-            { id: "intl_studies", name: "국제학관", icon: "🌍", spaceCount: 0 },
-            // 중앙도서관은 url 속성을 추가하여 외부 링크로 연결되게 설정합니다
-            { id: "library", name: "중앙도서관", icon: "🏛️", url: "https://lib.khu.ac.kr/" }, 
-            { id: "intl_business", name: "국제경영대학관", icon: "💼", spaceCount: 0 },
-            { id: "life_science", name: "생명과학대학관", icon: "🌱", spaceCount: 0 },
-            { id: "seonseung", name: "선승관", icon: "🥋", spaceCount: 0 },
-            { id: "multimedia", name: "멀티미디어교육관", icon: "🎬", spaceCount: 0 },
-            { id: "physical_edu", name: "체육대학관", icon: "⚽", spaceCount: 0 },
-            { id: "engineering", name: "공과대학관", icon: "⚙️", spaceCount: 0 },
-            { id: "foreign_lang", name: "외국어대학", icon: "🗣️", spaceCount: 0 },
-            { id: "woojungwon", name: "우정원", icon: "🏢", spaceCount: 0 }
-        ];
+        // 🚨 여기에 아까 복사한 구글 시트 웹게시(CSV) 링크를 붙여넣으세요!
+        const SHEET_CSV_URL = "여기에_링크를_붙여넣으세요";
 
-        // 2. 화면에 카드를 그리는 함수
-        function renderBuildings() {
+        Papa.parse(SHEET_CSV_URL, {
+            download: true,
+            header: true,
+            complete: function(results) {
+                const data = results.data;
+                renderBuildings(data);
+            }
+        });
+
+        function renderBuildings(sheetData) {
+            document.getElementById('loading').style.display = 'none';
             const container = document.getElementById('building-list');
-            
-            const cardsHTML = buildingData.map(building => {
-                // 중앙도서관처럼 url 데이터가 있는 경우: 새 창으로 외부 링크 열기
-                if (building.url) {
-                    return `
-                        <a href="${building.url}" target="_blank" rel="noopener noreferrer" class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-blue-400 transition-all text-left flex items-center gap-4 w-full">
-                            <div class="bg-yellow-100 p-3 rounded-lg text-2xl">${building.icon}</div>
-                            <div>
-                                <h2 class="text-lg font-bold text-gray-800">${building.name}</h2>
-                                <p class="text-sm text-blue-500 mt-1 font-semibold">도서관 홈페이지 이동 ↗</p>
-                            </div>
-                        </a>
-                    `;
-                } 
-                // 일반 건물의 경우: detail.html로 이동하며 건물의 id 값을 주소창에 전달
-                else {
-                    return `
-                        <a href="detail.html?id=${building.id}" class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-blue-400 transition-all text-left flex items-center gap-4 cursor-pointer w-full">
-                            <div class="bg-yellow-100 p-3 rounded-lg text-2xl">${building.icon}</div>
-                            <div>
-                                <h2 class="text-lg font-bold text-gray-800">${building.name}</h2>
-                                <p class="text-sm text-blue-600 mt-1">공간 정보 보기</p>
-                            </div>
-                        </a>
-                    `;
+            container.classList.remove('hidden');
+
+            // 데이터를 건물별로 묶어줍니다 (중복 제거 및 공간 수 카운트)
+            const buildingsMap = {};
+            sheetData.forEach(row => {
+                if(!row.building_id) return; // 빈 줄 무시
+                
+                if (!buildingsMap[row.building_id]) {
+                    buildingsMap[row.building_id] = {
+                        id: row.building_id,
+                        name: row.building_name,
+                        icon: row.building_icon,
+                        count: 0
+                    };
                 }
+                // floor_name이 있으면 공간 갯수 +1
+                if(row.floor_name) {
+                    buildingsMap[row.building_id].count += 1;
+                }
+            });
+
+            const buildings = Object.values(buildingsMap);
+            
+            const cardsHTML = buildings.map(building => {
+                const statusText = building.count > 0 ? `${building.count}개 공간 확인됨` : "공간 데이터 수집 중 🔍";
+                const textColor = building.count > 0 ? "text-blue-600 font-medium" : "text-gray-400";
+
+                return `
+                    <a href="detail.html?id=${building.id}" class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-blue-400 transition-all text-left flex items-center gap-4 cursor-pointer w-full">
+                        <div class="bg-yellow-100 p-3 rounded-lg text-2xl">${building.icon}</div>
+                        <div>
+                            <h2 class="text-lg font-bold text-gray-800">${building.name}</h2>
+                            <p class="text-sm ${textColor} mt-1">${statusText}</p>
+                        </div>
+                    </a>
+                `;
             }).join('');
 
             container.innerHTML = cardsHTML;
         }
-
-        renderBuildings();
     </script>
 </body>
 </html>
