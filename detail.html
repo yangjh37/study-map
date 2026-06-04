@@ -6,6 +6,7 @@
     <title>상세 정보 - 스터디맵</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://unpkg.com/panzoom@9.4.0/dist/panzoom.min.js"></script>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans min-h-screen pb-12">
     
@@ -23,7 +24,9 @@
 
     <main class="max-w-3xl mx-auto mt-4 px-4 hidden" id="main-content">
         <div id="tab-menu" class="flex overflow-x-auto gap-2 py-2 mb-4 scrollbar-hide"></div>
-        <div id="map-container" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6 flex justify-center items-center min-h-[350px]"></div>
+        
+        <div id="map-container" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6 flex justify-center items-center min-h-[350px] overflow-hidden relative"></div>
+        
         <div id="info-card" class="bg-yellow-50 rounded-2xl p-6 border border-yellow-100 shadow-sm relative"></div>
     </main>
 
@@ -33,9 +36,11 @@
     </style>
 
     <script>
-        // 🚨 index.html과 동일한 구글 시트 링크를 붙여넣으세요!
-        const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQO10FKa8KgbqDTwSuJgPxWqIkdwj2WtqOIiBrtrSVeYX3KL9lFSXcDHiUL53-ejc0sDHkosmtegi8E/pub?output=csv";
-let currentBuildingFloors = [];
+        // 🚨 여기에 본인의 구글 시트 CSV 링크를 꼭 다시 넣어주세요!
+        const SHEET_CSV_URL = "여기에_링크를_붙여넣으세요";
+        
+        let currentBuildingFloors = [];
+        let currentPanzoom = null; // 줌 상태 관리를 위한 변수
 
         const urlParams = new URLSearchParams(window.location.search);
         const currentId = urlParams.get('id');
@@ -65,7 +70,7 @@ let currentBuildingFloors = [];
                     } else {
                         document.getElementById('tab-menu').innerHTML = ``;
                         document.getElementById('map-container').innerHTML = `
-                            <div class="text-center text-gray-500 py-10">
+                            <div class="text-center text-gray-500 py-10 w-full">
                                 <span class="text-5xl block mb-4">🚧</span>
                                 <p class="font-bold text-xl text-gray-700">데이터 정리 중입니다</p>
                                 <p class="text-sm mt-2">조금만 기다려주세요!</p>
@@ -97,12 +102,10 @@ let currentBuildingFloors = [];
             const floorName = floorData.floor_name || '정보 없음';
             const imageUrl = floorData.image_url ? floorData.image_url.trim() : '';
             
-            // 💡 네이버 지도 링크가 있을 경우 렌더링할 초록색 버튼
             const naverMapBtn = floorData.naver_url 
                 ? `<a href="${floorData.naver_url}" target="_blank" rel="noopener noreferrer" class="bg-green-500 text-white text-xs font-bold px-3 py-2 rounded-full hover:bg-green-600 shadow-sm transition-colors flex items-center gap-1">📍 네이버 지도</a>` 
                 : '';
 
-            // 💡 실제 사진이 있을 경우 렌더링할 이미지 영역
             const realPhotoHtml = floorData.real_photo 
                 ? `<div class="mt-5 pt-4 border-t border-gray-200">
                      <p class="text-sm font-bold text-gray-600 mb-2">📷 실제 공간 사진</p>
@@ -110,13 +113,31 @@ let currentBuildingFloors = [];
                    </div>`
                 : '';
 
+            // 💡 3. 도면 영역에 줌 기능 적용 및 안내 배지 추가
             mapContainer.innerHTML = `
-                <img src="${imageUrl}" alt="${floorName}" class="max-w-full h-auto rounded-lg" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                <div class="text-center text-gray-400 hidden py-8">
+                ${imageUrl ? `<div class="absolute top-2 right-2 bg-black/50 text-white text-[10px] px-2 py-1 rounded-full pointer-events-none z-10">🔍 확대/드래그 가능</div>` : ''}
+                <img id="zoomable-map" src="${imageUrl}" alt="${floorName}" class="max-w-full h-auto rounded-lg cursor-move" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                <div class="text-center text-gray-400 hidden py-8 w-full">
                     <span class="text-4xl block mb-2">🗺️</span>
                     <p>도면 이미지를 준비하고 있습니다.</p>
                 </div>
             `;
+
+            // 💡 4. Panzoom 라이브러리 실행
+            const mapImg = document.getElementById('zoomable-map');
+            if(imageUrl && mapImg) {
+                // 이전 탭에서 쓰던 줌 설정이 남아있다면 초기화
+                if (currentPanzoom) {
+                    currentPanzoom.dispose();
+                }
+                // 도면 이미지에 줌/드래그 기능 달아주기
+                currentPanzoom = panzoom(mapImg, {
+                    maxZoom: 4,      // 최대 4배까지 확대
+                    minZoom: 1,      // 원래 크기보다 작아지진 않게
+                    bounds: true,    // 드래그 시 화면 밖으로 완전히 사라지지 않게 방지
+                    boundsPadding: 0.1
+                });
+            }
 
             infoCard.style.display = 'block';
             infoCard.innerHTML = `
@@ -151,7 +172,6 @@ let currentBuildingFloors = [];
             renderDetails(currentBuildingFloors[index]);
         }
         
-        // 즐겨찾기 로직
         const favBtn = document.getElementById('favorite-btn');
         let favorites = JSON.parse(localStorage.getItem('studyMapFavorites')) || [];
         if (favorites.includes(currentId)) { favBtn.innerText = '⭐'; favBtn.classList.add('text-yellow-400'); }
