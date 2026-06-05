@@ -9,71 +9,121 @@
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans">
     
-    <header class="bg-white shadow-sm py-8 px-4 mb-8 text-center">
+    <header class="bg-white shadow-sm py-8 px-4 mb-6 text-center">
         <h1 class="text-2xl font-bold text-blue-900 mb-2">경희대 국제캠퍼스 스터디맵 🗺️</h1>
-        <p class="text-gray-500">건물을 선택하여 도면과 공간 정보를 확인하세요.</p>
+        <p class="text-gray-500">목적에 맞는 공간을 찾거나 건물을 선택하세요.</p>
     </header>
 
     <main class="max-w-5xl mx-auto px-4 mb-12">
+        
+        <div class="flex flex-wrap gap-2 justify-center mb-8" id="filter-buttons">
+            <button onclick="applyFilter('all')" class="filter-btn active px-4 py-2 rounded-full border border-blue-400 bg-blue-50 text-blue-700 font-bold shadow-sm transition-colors">전체 보기</button>
+            <button onclick="applyFilter('콘센트')" class="filter-btn px-4 py-2 rounded-full border border-gray-200 bg-white text-gray-600 font-medium hover:bg-gray-50 transition-colors">🔌 콘센트 확보</button>
+            <button onclick="applyFilter('팀플')" class="filter-btn px-4 py-2 rounded-full border border-gray-200 bg-white text-gray-600 font-medium hover:bg-gray-50 transition-colors">🗣️ 팀플/대화</button>
+            <button onclick="applyFilter('조용')" class="filter-btn px-4 py-2 rounded-full border border-gray-200 bg-white text-gray-600 font-medium hover:bg-gray-50 transition-colors">🤫 조용한 집중</button>
+            <button onclick="applyFilter('휴식')" class="filter-btn px-4 py-2 rounded-full border border-gray-200 bg-white text-gray-600 font-medium hover:bg-gray-50 transition-colors">🛋️ 휴식/라운지</button>
+        </div>
+
         <div id="loading" class="text-center py-10 text-gray-500 font-bold">데이터를 불러오는 중입니다... ⏳</div>
+        
         <div id="building-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 hidden"></div>
+        
+        <div id="no-result" class="text-center py-10 text-gray-500 font-bold hidden">조건에 맞는 공간이 없습니다. 🥲</div>
+
     </main>
 
     <script>
-        // 🚨 여기에 아까 복사한 구글 시트 웹게시(CSV) 링크를 붙여넣으세요!
+        // 💡 알려주신 구글 시트 링크가 적용되었습니다!
         const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQO10FKa8KgbqDTwSuJgPxWqIkdwj2WtqOIiBrtrSVeYX3KL9lFSXcDHiUL53-ejc0sDHkosmtegi8E/pub?output=csv";
+        let allSheetData = []; 
 
-Papa.parse(SHEET_CSV_URL, {
+        Papa.parse(SHEET_CSV_URL, {
             download: true,
             header: true,
             complete: function(results) {
-                const data = results.data;
-                renderBuildings(data);
+                allSheetData = results.data;
+                document.getElementById('loading').style.display = 'none';
+                applyFilter('all'); 
             }
         });
 
-        function renderBuildings(sheetData) {
-            document.getElementById('loading').style.display = 'none';
-            const container = document.getElementById('building-list');
-            container.classList.remove('hidden');
+        function applyFilter(keyword) {
+            const buttons = document.querySelectorAll('.filter-btn');
+            buttons.forEach(btn => {
+                if(btn.innerText.includes(keyword) || (keyword === 'all' && btn.innerText.includes('전체'))) {
+                    btn.className = "filter-btn px-4 py-2 rounded-full border border-blue-400 bg-blue-50 text-blue-700 font-bold shadow-sm transition-colors active";
+                } else {
+                    btn.className = "filter-btn px-4 py-2 rounded-full border border-gray-200 bg-white text-gray-600 font-medium hover:bg-gray-50 transition-colors";
+                }
+            });
 
             const buildingsMap = {};
-            sheetData.forEach(row => {
-                if(!row.building_id) return; // 빈 줄 무시
+
+            allSheetData.forEach(row => {
+                if(!row.building_id) return;
+
+                let isMatch = false;
                 
+                if (keyword === 'all') {
+                    isMatch = true;
+                } else if (keyword === '콘센트' && row.plug && row.plug.includes('있음')) {
+                    isMatch = true;
+                } else if (keyword === '팀플' && row.features && (row.features.includes('팀플') || row.features.includes('대화') || row.features.includes('소음'))) {
+                    isMatch = true;
+                } else if (keyword === '조용' && row.features && (row.features.includes('조용') || row.features.includes('집중') || row.features.includes('정숙'))) {
+                    isMatch = true;
+                } else if (keyword === '휴식' && row.features && (row.features.includes('휴식') || row.features.includes('휴게') || row.features.includes('라운지'))) {
+                    isMatch = true;
+                }
+
+                if (row.building_url || !row.floor_name) {
+                     if(keyword !== 'all') isMatch = false;
+                }
+
                 if (!buildingsMap[row.building_id]) {
                     buildingsMap[row.building_id] = {
                         id: row.building_id,
                         name: row.building_name,
                         icon: row.building_icon,
-                        // 💡 구글 시트 K열에 적은 링크 주소를 가져옵니다!
-                        url: row.building_url, 
-                        count: 0
+                        url: row.building_url,
+                        count: 0,
+                        hasMatchingFloor: false
                     };
                 }
-                // floor_name이 있으면 공간 갯수 +1
-                if(row.floor_name) {
-                    buildingsMap[row.building_id].count += 1;
-                }
+
+                if (row.floor_name) buildingsMap[row.building_id].count += 1;
+                if (isMatch) buildingsMap[row.building_id].hasMatchingFloor = true;
             });
 
-            const buildings = Object.values(buildingsMap);
-            
+            const filteredBuildings = Object.values(buildingsMap).filter(b => b.hasMatchingFloor);
+            renderBuildings(filteredBuildings);
+        }
+
+        function renderBuildings(buildings) {
+            const container = document.getElementById('building-list');
+            const noResult = document.getElementById('no-result');
+
+            if (buildings.length === 0) {
+                container.classList.add('hidden');
+                noResult.classList.remove('hidden');
+                return;
+            }
+
+            container.classList.remove('hidden');
+            noResult.classList.add('hidden');
+
             const cardsHTML = buildings.map(building => {
-                // 💡 building_url 데이터가 있는 경우: 외부 링크용 버튼 디자인
                 if (building.url) {
                     return `
-                        <a href="${building.url}" target="_blank" rel="noopener noreferrer" class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-blue-400 transition-all text-left flex items-center gap-4 cursor-pointer w-full">
+                        <a href="${building.url}" target="_blank" rel="noopener noreferrer" class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-blue-400 transition-all text-left flex items-center gap-4 w-full">
                             <div class="bg-yellow-100 p-3 rounded-lg text-2xl">${building.icon}</div>
                             <div>
                                 <h2 class="text-lg font-bold text-gray-800">${building.name}</h2>
-                                <p class="text-sm text-blue-500 mt-1 font-semibold">도서관 홈페이지 이동 ↗</p>
+                                <p class="text-sm text-blue-500 mt-1 font-semibold">홈페이지 이동 ↗</p>
                             </div>
                         </a>
                     `;
-                } 
-                // 💡 일반 건물인 경우: 기존과 동일한 상세 페이지 이동 버튼
-                else {
+                } else {
                     const statusText = building.count > 0 ? `${building.count}개 공간 확인됨` : "공간 데이터 수집 중 🔍";
                     const textColor = building.count > 0 ? "text-blue-600 font-medium" : "text-gray-400";
 
