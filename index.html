@@ -18,7 +18,6 @@
         
         <div class="flex flex-wrap gap-2 justify-center mb-8" id="filter-buttons">
             <button onclick="applyFilter('all')" class="filter-btn active px-4 py-2 rounded-full border border-blue-400 bg-blue-50 text-blue-700 font-bold shadow-sm transition-colors">전체 보기</button>
-            <button onclick="applyFilter('콘센트')" class="filter-btn px-4 py-2 rounded-full border border-gray-200 bg-white text-gray-600 font-medium hover:bg-gray-50 transition-colors">🔌 콘센트 확보</button>
             <button onclick="applyFilter('팀플')" class="filter-btn px-4 py-2 rounded-full border border-gray-200 bg-white text-gray-600 font-medium hover:bg-gray-50 transition-colors">🗣️ 팀플/대화</button>
             <button onclick="applyFilter('조용')" class="filter-btn px-4 py-2 rounded-full border border-gray-200 bg-white text-gray-600 font-medium hover:bg-gray-50 transition-colors">🤫 조용한 집중</button>
         </div>
@@ -32,6 +31,7 @@
     </main>
 
     <script>
+        // 알려주신 소중한 구글 시트 링크 고정 적용 완료!
         const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQO10FKa8KgbqDTwSuJgPxWqIkdwj2WtqOIiBrtrSVeYX3KL9lFSXcDHiUL53-ejc0sDHkosmtegi8E/pub?output=csv";
         let allSheetData = []; 
 
@@ -58,14 +58,11 @@
             const buildingsMap = {};
 
             allSheetData.forEach(row => {
-                if(!row.building_id) return;
+                if(!row.building_id || row.building_id.trim() === '') return;
 
                 let isMatch = false;
                 
-                // 휴식/라운지 필터링 로직이 삭제되었습니다.
                 if (keyword === 'all') {
-                    isMatch = true;
-                } else if (keyword === '콘센트' && row.plug && row.plug.includes('있음')) {
                     isMatch = true;
                 } else if (keyword === '팀플' && row.features && (row.features.includes('팀플') || row.features.includes('대화') || row.features.includes('소음'))) {
                     isMatch = true;
@@ -73,22 +70,34 @@
                     isMatch = true;
                 }
 
-                if (row.building_url || !row.floor_name) {
+                if (row.building_url || !row.floor_name || row.floor_name.trim() === '') {
                      if(keyword !== 'all') isMatch = false;
                 }
 
+                // 💡 [초강력 안전장치] 데이터 그룹화 로직 보완
+                // 구글 시트 여러 줄 중 이름이나 아이콘이 단 한 곳이라도 적혀있다면 undefined가 되지 않고 완벽하게 매핑합니다.
                 if (!buildingsMap[row.building_id]) {
                     buildingsMap[row.building_id] = {
-                        id: row.building_id,
-                        name: row.building_name,
-                        icon: row.building_icon,
-                        url: row.building_url,
+                        id: row.building_id.trim(),
+                        name: row.building_name ? row.building_name.trim() : '',
+                        icon: row.building_icon ? row.building_icon.trim() : '',
+                        url: row.building_url ? row.building_url.trim() : '',
                         count: 0,
                         hasMatchingFloor: false
                     };
+                } else {
+                    if (!buildingsMap[row.building_id].name && row.building_name) {
+                        buildingsMap[row.building_id].name = row.building_name.trim();
+                    }
+                    if (!buildingsMap[row.building_id].icon && row.building_icon) {
+                        buildingsMap[row.building_id].icon = row.building_icon.trim();
+                    }
+                    if (!buildingsMap[row.building_id].url && row.building_url) {
+                        buildingsMap[row.building_id].url = row.building_url.trim();
+                    }
                 }
 
-                if (row.floor_name) buildingsMap[row.building_id].count += 1;
+                if (row.floor_name && row.floor_name.trim() !== '') buildingsMap[row.building_id].count += 1;
                 if (isMatch) buildingsMap[row.building_id].hasMatchingFloor = true;
             });
 
@@ -110,12 +119,16 @@
             noResult.classList.add('hidden');
 
             const cardsHTML = buildings.map(building => {
+                // 혹시 모를 이름/아이콘 누락 시 기본값 처리
+                const bName = building.name || building.id;
+                const bIcon = building.icon || '🏢';
+
                 if (building.url) {
                     return `
                         <a href="${building.url}" target="_blank" rel="noopener noreferrer" class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-blue-400 transition-all text-left flex items-center gap-4 w-full">
-                            <div class="bg-yellow-100 p-3 rounded-lg text-2xl">${building.icon}</div>
+                            <div class="bg-yellow-100 p-3 rounded-lg text-2xl">${bIcon}</div>
                             <div>
-                                <h2 class="text-lg font-bold text-gray-800">${building.name}</h2>
+                                <h2 class="text-lg font-bold text-gray-800">${bName}</h2>
                                 <p class="text-sm text-blue-500 mt-1 font-semibold">홈페이지 이동 ↗</p>
                             </div>
                         </a>
@@ -126,9 +139,9 @@
 
                     return `
                         <a href="detail.html?id=${building.id}" class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-blue-400 transition-all text-left flex items-center gap-4 cursor-pointer w-full">
-                            <div class="bg-yellow-100 p-3 rounded-lg text-2xl">${building.icon}</div>
+                            <div class="bg-yellow-100 p-3 rounded-lg text-2xl">${bIcon}</div>
                             <div>
-                                <h2 class="text-lg font-bold text-gray-800">${building.name}</h2>
+                                <h2 class="text-lg font-bold text-gray-800">${bName}</h2>
                                 <p class="text-sm ${textColor} mt-1">${statusText}</p>
                             </div>
                         </a>
