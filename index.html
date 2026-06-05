@@ -3,94 +3,182 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>세계와 시민: 스터디맵</title>
+    <title>상세 정보 - 스터디맵</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://unpkg.com/panzoom@9.4.0/dist/panzoom.min.js"></script>
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans">
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen pb-12">
     
-    <header class="bg-white shadow-sm py-8 px-4 mb-8 text-center">
-        <h1 class="text-2xl font-bold text-blue-900 mb-2">경희대 국제캠퍼스 스터디맵 🗺️</h1>
-        <p class="text-gray-500">건물을 선택하여 도면과 공간 정보를 확인하세요.</p>
+    <header class="bg-white shadow-sm py-4 px-4 sticky top-0 z-10 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <a href="index.html" class="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6 text-gray-600">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                </svg>
+            </a>
+            <h1 id="building-title" class="text-xl font-bold text-gray-800">로딩 중... ⏳</h1>
+        </div>
+        <button id="favorite-btn" class="text-3xl text-gray-300 hover:text-yellow-400 transition-colors drop-shadow-sm pb-1">☆</button>
     </header>
 
-    <main class="max-w-5xl mx-auto px-4 mb-12">
-        <div id="loading" class="text-center py-10 text-gray-500 font-bold">데이터를 불러오는 중입니다... ⏳</div>
-        <div id="building-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 hidden"></div>
+    <main class="max-w-3xl mx-auto mt-4 px-4 hidden" id="main-content">
+        <div id="tab-menu" class="flex overflow-x-auto gap-2 py-2 mb-4 scrollbar-hide"></div>
+        
+        <div id="map-container" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6 flex justify-center items-center min-h-[350px] overflow-hidden relative"></div>
+        
+        <div id="info-card" class="bg-yellow-50 rounded-2xl p-6 border border-yellow-100 shadow-sm relative"></div>
     </main>
 
-    <script>
-        // 🚨 여기에 아까 복사한 구글 시트 웹게시(CSV) 링크를 붙여넣으세요!
-        const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQO10FKa8KgbqDTwSuJgPxWqIkdwj2WtqOIiBrtrSVeYX3KL9lFSXcDHiUL53-ejc0sDHkosmtegi8E/pub?output=csv";
+    <style>
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
 
-Papa.parse(SHEET_CSV_URL, {
+    <script>
+        // 🚨여기에 본인의 구글 시트 CSV 링크를 꼭 다시 넣어주세요!
+        const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQO10FKa8KgbqDTwSuJgPxWqIkdwj2WtqOIiBrtrSVeYX3KL9lFSXcDHiUL53-ejc0sDHkosmtegi8E/pub?output=csv";
+        
+        let currentBuildingFloors = [];
+        let currentPanzoom = null;
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentId = urlParams.get('id');
+
+        Papa.parse(SHEET_CSV_URL, {
             download: true,
             header: true,
             complete: function(results) {
-                const data = results.data;
-                renderBuildings(data);
+                const allData = results.data;
+                
+                currentBuildingFloors = allData.filter(row => 
+                    row.building_id === currentId && 
+                    row.floor_name && 
+                    row.floor_name.trim() !== ''
+                );
+                
+                const buildingInfo = allData.find(row => row.building_id === currentId);
+
+                if (buildingInfo) {
+                    document.getElementById('building-title').innerText = `${buildingInfo.building_name} ${buildingInfo.building_icon || ''}`;
+                    document.title = `${buildingInfo.building_name} - 스터디맵`;
+                    document.getElementById('main-content').classList.remove('hidden');
+
+                    if(currentBuildingFloors.length > 0) {
+                        renderTabs(currentBuildingFloors, 0);
+                        renderDetails(currentBuildingFloors[0]);
+                    } else {
+                        document.getElementById('tab-menu').innerHTML = ``;
+                        document.getElementById('map-container').innerHTML = `
+                            <div class="text-center text-gray-500 py-10 w-full">
+                                <span class="text-5xl block mb-4">🚧</span>
+                                <p class="font-bold text-xl text-gray-700">데이터 정리 중입니다</p>
+                                <p class="text-sm mt-2">조금만 기다려주세요!</p>
+                            </div>
+                        `;
+                        document.getElementById('info-card').style.display = 'none';
+                    }
+                } else {
+                    document.getElementById('building-title').innerText = "건물을 찾을 수 없습니다";
+                }
             }
         });
 
-        function renderBuildings(sheetData) {
-            document.getElementById('loading').style.display = 'none';
-            const container = document.getElementById('building-list');
-            container.classList.remove('hidden');
-
-            const buildingsMap = {};
-            sheetData.forEach(row => {
-                if(!row.building_id) return; // 빈 줄 무시
+        function renderTabs(floors, activeIndex) {
+            const tabMenu = document.getElementById('tab-menu');
+            tabMenu.innerHTML = floors.map((floor, idx) => {
+                const isActive = idx === activeIndex;
+                const activeClass = "bg-yellow-100 text-yellow-800 font-bold border-yellow-300 shadow-sm";
+                const inactiveClass = "bg-white text-gray-600 font-medium border-gray-200 hover:bg-gray-50";
                 
-                if (!buildingsMap[row.building_id]) {
-                    buildingsMap[row.building_id] = {
-                        id: row.building_id,
-                        name: row.building_name,
-                        icon: row.building_icon,
-                        // 💡 구글 시트 K열에 적은 링크 주소를 가져옵니다!
-                        url: row.building_url, 
-                        count: 0
-                    };
-                }
-                // floor_name이 있으면 공간 갯수 +1
-                if(row.floor_name) {
-                    buildingsMap[row.building_id].count += 1;
-                }
-            });
-
-            const buildings = Object.values(buildingsMap);
-            
-            const cardsHTML = buildings.map(building => {
-                // 💡 building_url 데이터가 있는 경우: 외부 링크용 버튼 디자인
-                if (building.url) {
-                    return `
-                        <a href="${building.url}" target="_blank" rel="noopener noreferrer" class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-blue-400 transition-all text-left flex items-center gap-4 cursor-pointer w-full">
-                            <div class="bg-yellow-100 p-3 rounded-lg text-2xl">${building.icon}</div>
-                            <div>
-                                <h2 class="text-lg font-bold text-gray-800">${building.name}</h2>
-                                <p class="text-sm text-blue-500 mt-1 font-semibold">도서관 홈페이지 이동 ↗</p>
-                            </div>
-                        </a>
-                    `;
-                } 
-                // 💡 일반 건물인 경우: 기존과 동일한 상세 페이지 이동 버튼
-                else {
-                    const statusText = building.count > 0 ? `${building.count}개 공간 확인됨` : "공간 데이터 수집 중 🔍";
-                    const textColor = building.count > 0 ? "text-blue-600 font-medium" : "text-gray-400";
-
-                    return `
-                        <a href="detail.html?id=${building.id}" class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-blue-400 transition-all text-left flex items-center gap-4 cursor-pointer w-full">
-                            <div class="bg-yellow-100 p-3 rounded-lg text-2xl">${building.icon}</div>
-                            <div>
-                                <h2 class="text-lg font-bold text-gray-800">${building.name}</h2>
-                                <p class="text-sm ${textColor} mt-1">${statusText}</p>
-                            </div>
-                        </a>
-                    `;
-                }
+                return `<button onclick="changeFloor(${idx})" class="shrink-0 px-4 py-2 rounded-full border transition-all ${isActive ? activeClass : inactiveClass}">${floor.floor_name}</button>`;
             }).join('');
-
-            container.innerHTML = cardsHTML;
         }
+
+        function renderDetails(floorData) {
+            const mapContainer = document.getElementById('map-container');
+            const infoCard = document.getElementById('info-card');
+
+            const floorName = floorData.floor_name || '정보 없음';
+            const imageUrl = floorData.image_url ? floorData.image_url.trim() : '';
+            
+            const naverMapBtn = floorData.naver_url 
+                ? `<a href="${floorData.naver_url}" target="_blank" rel="noopener noreferrer" class="bg-green-500 text-white text-xs font-bold px-3 py-2 rounded-full hover:bg-green-600 shadow-sm transition-colors flex items-center gap-1">📍 네이버 지도</a>` 
+                : '';
+
+            const realPhotoHtml = floorData.real_photo 
+                ? `<div class="mt-5 pt-4 border-t border-gray-200">
+                     <p class="text-sm font-bold text-gray-600 mb-2">📷 실제 공간 사진</p>
+                     <img src="${floorData.real_photo.trim()}" alt="실제 현장 사진" class="max-w-full h-auto rounded-lg shadow-sm border border-gray-100" onerror="this.style.display='none';">
+                   </div>`
+                : '';
+
+            mapContainer.innerHTML = `
+                ${imageUrl ? `<div class="absolute top-2 right-2 bg-black/50 text-white text-[10px] px-2 py-1 rounded-full pointer-events-none z-10">🔍 확대/드래그 가능</div>` : ''}
+                <img id="zoomable-map" src="${imageUrl}" alt="${floorName}" class="max-w-full h-auto rounded-lg cursor-move" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                <div class="text-center text-gray-400 hidden py-8 w-full">
+                    <span class="text-4xl block mb-2">🗺️</span>
+                    <p>도면 이미지를 준비하고 있습니다.</p>
+                </div>
+            `;
+
+            const mapImg = document.getElementById('zoomable-map');
+            if(imageUrl && mapImg) {
+                if (currentPanzoom) {
+                    currentPanzoom.dispose();
+                }
+                currentPanzoom = panzoom(mapImg, {
+                    maxZoom: 4,
+                    minZoom: 1,
+                    bounds: true,
+                    boundsPadding: 0.1
+                });
+            }
+
+            infoCard.style.display = 'block';
+            infoCard.innerHTML = `
+                <div class="flex items-center justify-between mb-4 border-b border-yellow-200 pb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="text-red-500 text-xl">📍</span>
+                        <h2 class="text-lg font-bold text-gray-800">${floorName} 정보</h2>
+                    </div>
+                    
+                    <div class="flex gap-2">
+                        ${naverMapBtn}
+                        <a href="http://news.khu.ac.kr/kor/user/contents/view.do?menuNo=200086" target="_blank" rel="noopener noreferrer" class="bg-blue-600 text-white text-xs font-bold px-3 py-2 rounded-full hover:bg-blue-700 shadow-sm transition-colors flex items-center gap-1">
+                            🗺️ 경로 찾기
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="space-y-3 text-sm text-gray-700">
+                    <div class="flex"><span class="font-bold w-20 text-gray-600">[위치]</span><span class="flex-1">${floorData.location || '데이터 정리 중 ✍️'}</span></div>
+                    <div class="flex items-center"><span class="font-bold w-20 text-gray-600">[사용자수]</span><span class="flex-1 text-blue-600 font-semibold bg-white px-2 py-1 rounded shadow-sm border border-gray-100">${floorData.congestion || '조사 중 🔍'}</span></div>
+                    <div class="flex"><span class="font-bold w-20 text-gray-600">[특징]</span><span class="flex-1">${floorData.features || '데이터 정리 중 ✍️'}</span></div>
+                </div>
+                
+                ${realPhotoHtml}
+            `;
+        }
+
+        function changeFloor(index) {
+            renderTabs(currentBuildingFloors, index);
+            renderDetails(currentBuildingFloors[index]);
+        }
+        
+        const favBtn = document.getElementById('favorite-btn');
+        let favorites = JSON.parse(localStorage.getItem('studyMapFavorites')) || [];
+        if (favorites.includes(currentId)) { favBtn.innerText = '⭐'; favBtn.classList.add('text-yellow-400'); }
+        favBtn.addEventListener('click', () => {
+            if (favorites.includes(currentId)) {
+                favorites = favorites.filter(id => id !== currentId);
+                favBtn.innerText = '☆'; favBtn.classList.remove('text-yellow-400');
+            } else {
+                favorites.push(currentId);
+                favBtn.innerText = '⭐'; favBtn.classList.add('text-yellow-400');
+            }
+            localStorage.setItem('studyMapFavorites', JSON.stringify(favorites));
+        });
     </script>
 </body>
 </html>
