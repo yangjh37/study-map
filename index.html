@@ -32,7 +32,6 @@
     </main>
 
     <script>
-        // 💡 알려주신 구글 시트 링크가 적용되었습니다!
         const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQO10FKa8KgbqDTwSuJgPxWqIkdwj2WtqOIiBrtrSVeYX3KL9lFSXcDHiUL53-ejc0sDHkosmtegi8E/pub?output=csv";
         let allSheetData = []; 
 
@@ -63,6 +62,7 @@
 
                 let isMatch = false;
                 
+                // 휴식/라운지 필터링 로직이 삭제되었습니다.
                 if (keyword === 'all') {
                     isMatch = true;
                 } else if (keyword === '콘센트' && row.plug && row.plug.includes('있음')) {
@@ -70,8 +70,6 @@
                 } else if (keyword === '팀플' && row.features && (row.features.includes('팀플') || row.features.includes('대화') || row.features.includes('소음'))) {
                     isMatch = true;
                 } else if (keyword === '조용' && row.features && (row.features.includes('조용') || row.features.includes('집중') || row.features.includes('정숙'))) {
-                    isMatch = true;
-                } else if (keyword === '휴식' && row.features && (row.features.includes('휴식') || row.features.includes('휴게') || row.features.includes('라운지'))) {
                     isMatch = true;
                 }
 
